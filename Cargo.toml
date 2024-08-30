@@ -19,7 +19,8 @@ serde_json = "1.0"
 tracing = "0.1"
 tracing-wasm = "0.2"
 yew = { version = "0.21.0", features = ["csr"] }
-yew-custom-components = { git = "https://github.com/aknarts/yew-custom-components", features = ["table", "pagination"] }
+yew-custom-components = { version = "0.2.2", features = ["table", "pagination"] }
+serde_json = "1.0.117"
 yew-hooks = "0.3"
 yew-router = "0.18"
 web-sys = { version = "0.3", features = ["HtmlInputElement","Document", "Window"] }
