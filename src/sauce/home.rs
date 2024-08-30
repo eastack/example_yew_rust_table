@@ -1,12 +1,42 @@
 use std::collections::HashSet;
 use yew::{Callback, classes, function_component, Html, html, TargetCast, use_reducer, use_state};
 use serde::Serialize;
-use web_sys::{HtmlInputElement, InputEvent};
+use web_sys::{console, HtmlInputElement, InputEvent};
 use yew_hooks::use_set;
+use yew_hooks::use_async;
 use yew_custom_components::pagination::Pagination;
 use yew_custom_components::table::{Options, Table};
 use yew_custom_components::table::types::{ColumnBuilder, TableData};
+use plotly::{Plot, Scatter};
+use yew::prelude::*;
 
+
+#[function_component(App)]
+pub fn plot_component() -> Html {
+    let p = use_async::<_, _, ()>({
+        let id = "plot-div";
+        let mut plot = Plot::new();
+        let trace = Scatter::new(vec![0, 1, 2], vec![2, 1, 0]);
+        plot.add_trace(trace);
+
+        let layout = plotly::Layout::new().title("Displaying a Chart in Yew");
+        plot.set_layout(layout);
+
+        async move {
+            plotly::bindings::new_plot(id, &plot).await;
+            Ok(())
+        }
+    });
+
+    // Only on first render
+    use_effect_with((), move |_| {
+        p.run();
+    });
+
+    html! {
+        <div id="plot-div"></div>
+    }
+}
 
 
 #[function_component(Home)]
@@ -14,6 +44,9 @@ pub fn home() -> Html {
     // Mock data holder
     let data = use_reducer(crate::types::mock_data::Data::default);
     let mock_data = (*data).clone();
+
+    // console::log_1(&plot_html.clone().into());
+
 
     // Search term
     let search_term = use_state(|| None::<String>);
@@ -51,6 +84,7 @@ pub fn home() -> Html {
         orderable_classes: vec!["mx-1".to_string(), "fa-solid".to_string()],
     };
 
+    
     // Handle sum
     let callback_sum = {
         let selected_indexes = selected_indexes.clone();
@@ -101,8 +135,12 @@ pub fn home() -> Html {
         })
     };
 
+
+
+    
     html!(
         <>
+            <div id="plot-div"></div>
             <h1>{"Minimal table Example"}</h1>
             <div class="flex-grow-1 p-2 input-group mb-2">
                 <span class="input-group-text">
@@ -113,9 +151,13 @@ pub fn home() -> Html {
             <Table<TableLine> options={options.clone()} limit={Some(10)} page={current_page} search={search.clone()} classes={classes!("table", "table-hover")} columns={columns.clone()} data={table_data.clone()} orderable={true}/>
             <Pagination total={table_data.len()} limit={10} options={pagination_options} on_page={Some(handle_page)}/>
             <h5>{"Sum of selected"} <span class="badge text-bg-secondary">{sum}</span></h5>
+            <App />
         </>
     )
-}
+} 
+
+
+
 
 #[derive(Clone, Serialize, Debug, Default)]
 struct TableLine {
