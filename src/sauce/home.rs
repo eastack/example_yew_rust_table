@@ -140,7 +140,6 @@ pub fn home() -> Html {
     
     html!(
         <>
-            <div id="plot-div"></div>
             <h1>{"Minimal table Example"}</h1>
             <div class="flex-grow-1 p-2 input-group mb-2">
                 <span class="input-group-text">
@@ -151,6 +150,7 @@ pub fn home() -> Html {
             <Table<TableLine> options={options.clone()} limit={Some(10)} page={current_page} search={search.clone()} classes={classes!("table", "table-hover")} columns={columns.clone()} data={table_data.clone()} orderable={true}/>
             <Pagination total={table_data.len()} limit={10} options={pagination_options} on_page={Some(handle_page)}/>
             <h5>{"Sum of selected"} <span class="badge text-bg-secondary">{sum}</span></h5>
+            <div id="plot-div"></div>
             <App />
         </>
     )
