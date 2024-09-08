@@ -7,7 +7,6 @@ use yew_hooks::use_async;
 use yew_custom_components::pagination::Pagination;
 use yew_custom_components::table::{Options, Table};
 use yew_custom_components::table::types::{ColumnBuilder, TableData};
-// use plotly::common::Mode;
 use plotly::{Plot, Scatter};
 use yew::prelude::*;
 
@@ -37,7 +36,6 @@ pub fn plot_component(props: &PlotProps) -> Html {
             for (i, (energy, cross_section)) in cache.energy_values.iter().zip(&cache.cross_section_values).enumerate() {
                 if cache.checkbox_selected[i] {
                     let trace = Scatter::new(energy.clone(), cross_section.clone())
-                        // .mode(Mode::Markers)
                         .name(&format!("Scatter Plot {}", i));
                     plot.add_trace(trace);
                 }
@@ -63,42 +61,44 @@ pub fn plot_component(props: &PlotProps) -> Html {
 
 fn generate_cache(selected: &HashSet<usize>) -> XsCache {
     // as nothing is selected initially this returns an empy strut
-    // so I've commented this out and I've made up a strut with data
+    // I need this calling and updating the cache on every checkbox interaction
 
-    // let mut cache_energy_values = Vec::new();
-    // let mut cache_cross_section_values = Vec::new();
-    // let mut cache_checkbox_selected = Vec::new();
+    let mut cache_energy_values = Vec::new();
+    let mut cache_cross_section_values = Vec::new();
+    let mut cache_checkbox_selected = Vec::new();
 
-    // for &selected_id in selected.iter() {
-    //     let (energy, cross_section) = get_values_by_id(selected_id as i32);
-    //     cache_energy_values.push(energy);
-    //     cache_cross_section_values.push(cross_section);
-    //     cache_checkbox_selected.push(true);
+    for &selected_id in selected.iter() {
+        let (energy, cross_section) = get_values_by_id(selected_id as i32);
+        cache_energy_values.push(energy);
+        cache_cross_section_values.push(cross_section);
+        cache_checkbox_selected.push(true);
 
-    //     // Print the selected ID to the console
-    //     console::log_1(&selected_id.clone().into());
-    // }
-
-    // XsCache {
-    //     energy_values: cache_energy_values,
-    //     cross_section_values: cache_cross_section_values,
-    //     checkbox_selected: cache_checkbox_selected,
-    // }
+        // Print the selected ID to the console
+        console::log_1(&selected_id.clone().into());
+    }
 
     XsCache {
-        energy_values: vec![
-            vec![5.0, 5.1, 5.2],
-            vec![3.0, 4.0]
-        ],
-        cross_section_values: vec![
-            vec![50.0, 50.1, 50.2],
-            vec![7.0, 8.0]
-        ],
-        checkbox_selected: vec![true, true],
+        energy_values: cache_energy_values,
+        cross_section_values: cache_cross_section_values,
+        checkbox_selected: cache_checkbox_selected,
     }
+
+    // XsCache {
+    //     energy_values: vec![
+    //         vec![5.0, 5.1, 5.2],
+    //         vec![3.0, 4.0]
+    //     ],
+    //     cross_section_values: vec![
+    //         vec![50.0, 50.1, 50.2],
+    //         vec![7.0, 8.0]
+    //     ],
+    //     checkbox_selected: vec![true, true],
+    // }
 }
 
 fn get_values_by_id(id: i32) -> (Vec<f64>, Vec<f64>) {
+    // this is a temporary function, in the future this would be a downloading of JSON data from a URL.
+    // hence the desire to cache any downloaded entries so that if they are unselected and then reselected they don't need to be downloaded twice.
     match id {
         1 => (vec![1.0, 1.1, 1.2], vec![10.0, 10.1, 10.2]),
         2 => (vec![2.0, 2.1, 2.2], vec![20.0, 20.1, 20.2]),
@@ -139,9 +139,6 @@ pub fn home() -> Html {
     // Mock data holder
     let data = use_reducer(crate::types::mock_data::Data::default);
     let mock_data = (*data).clone();
-
-    // console::log_1(&plot_html.clone().into());
-
 
     // Search term
     let search_term = use_state(|| None::<String>);
@@ -186,11 +183,9 @@ pub fn home() -> Html {
         })
     };
 
-    // how to I get this to be updated and run everytime a checkbox it ticked?
+    // how to I get this to be updated and run everytime a checkbox it ticked? A bit similar to the callback above
     let cache = generate_cache(&selected);
 
-
-    
     console::log_1(&serde_wasm_bindgen::to_value(&cache).unwrap());
 
     // Fill the table data structure with actual data
