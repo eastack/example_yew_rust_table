@@ -15,7 +15,7 @@ use yew::prelude::*;
 pub struct XsCache {
     pub energy_values: Vec<Vec<f64>>,
     pub cross_section_values: Vec<Vec<f64>>,
-    pub selected: Vec<bool>,
+    pub checkbox_selected: Vec<bool>,
 }
 
 #[derive(Properties, PartialEq)]
@@ -35,7 +35,7 @@ pub fn plot_component(props: &PlotProps) -> Html {
             let mut plot = Plot::new();
 
             for (i, (energy, cross_section)) in cache.energy_values.iter().zip(&cache.cross_section_values).enumerate() {
-                if cache.selected[i] {
+                if cache.checkbox_selected[i] {
                     let trace = Scatter::new(energy.clone(), cross_section.clone())
                         // .mode(Mode::Markers)
                         .name(&format!("Scatter Plot {}", i));
@@ -119,40 +119,7 @@ pub fn home() -> Html {
 
     let sum = selected.len();
 
-    // this needs updating with a callback
-    // let mut cache_energy_values = Vec::new();
-    // let mut cache_cross_section_values = Vec::new();
-    // let mut cache_selected = Vec::new();
 
-    // for &selected_id in selected.iter() {
-    //     let (energy, cross_section) = get_values_by_id(selected_id as i32);
-    //     cache_energy_values.push(energy);
-    //     cache_cross_section_values.push(cross_section);
-    //     cache_selected.push(true);
-
-    //     // Print the selected ID to the console
-    //     console::log_1(&selected_id.clone().into());
-    // }
-
-    // let cache = XsCache {
-    //     energy_values:cache_energy_values,
-    //     cross_section_values:cache_cross_section_values,
-    //     selected:cache_selected,
-    // };
-
-    let cache = XsCache {
-        energy_values: vec![
-            vec![5.0, 5.1, 5.2],
-            vec![3.0, 4.0]
-        ],
-        cross_section_values: vec![
-            vec![50.0, 50.1, 50.2],
-            vec![7.0, 8.0]
-        ],
-        selected: vec![true, true],
-    };
-    
-    console::log_1(&serde_wasm_bindgen::to_value(&cache).unwrap());
 
     // Column definition
     let columns = vec![
@@ -182,6 +149,42 @@ pub fn home() -> Html {
             }
         })
     };
+
+    let cache = XsCache {
+        energy_values: vec![
+            vec![5.0, 5.1, 5.2],
+            vec![3.0, 4.0]
+        ],
+        cross_section_values: vec![
+            vec![50.0, 50.1, 50.2],
+            vec![7.0, 8.0]
+        ],
+        checkbox_selected: vec![true, true],
+    };
+    
+    console::log_1(&serde_wasm_bindgen::to_value(&cache).unwrap());
+
+
+    // this needs updating with a callback
+    // let mut cache_energy_values = Vec::new();
+    // let mut cache_cross_section_values = Vec::new();
+    // let mut cache_selected = Vec::new();
+
+    // for &selected_id in selected.iter() {
+    //     let (energy, cross_section) = get_values_by_id(selected_id as i32);
+    //     cache_energy_values.push(energy);
+    //     cache_cross_section_values.push(cross_section);
+    //     cache_selected.push(true);
+
+    //     // Print the selected ID to the console
+    //     console::log_1(&selected_id.clone().into());
+    // }
+
+    // let cache = XsCache {
+    //     energy_values:cache_energy_values,
+    //     cross_section_values:cache_cross_section_values,
+    //     selected:cache_selected,
+    // };
 
     // Fill the table data structure with actual data
     let mut table_data = Vec::new();
@@ -216,6 +219,7 @@ pub fn home() -> Html {
         .active_item_classes(vec!(String::from("active")))
         .disabled_item_classes(vec!(String::from("disabled")));
 
+    // Handle changing page
     let handle_page = {
         let page = page.clone();
         Callback::from(move |id: usize| {
