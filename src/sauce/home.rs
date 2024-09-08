@@ -7,22 +7,45 @@ use yew_hooks::use_async;
 use yew_custom_components::pagination::Pagination;
 use yew_custom_components::table::{Options, Table};
 use yew_custom_components::table::types::{ColumnBuilder, TableData};
+// use plotly::common::Mode;
 use plotly::{Plot, Scatter};
 use yew::prelude::*;
 
+#[derive(PartialEq, Clone)]
+pub struct XsCache {
+    pub energy_values: Vec<Vec<f64>>,
+    pub cross_section_values: Vec<Vec<f64>>,
+    pub selected: Vec<bool>,
+}
+
+#[derive(Properties, PartialEq)]
+pub struct PlotProps {
+    pub cache: XsCache,
+}
 
 #[function_component(App)]
-pub fn plot_component() -> Html {
-    let p = use_async::<_, _, ()>({
-        let id = "plot-div";
-        let mut plot = Plot::new();
-        let trace = Scatter::new(vec![0, 1, 2], vec![2, 1, 0]);
-        plot.add_trace(trace);
+pub fn plot_component(props: &PlotProps) -> Html {
+    let cache = &props.cache;
 
-        let layout = plotly::Layout::new().title("Displaying a Chart in Yew");
-        plot.set_layout(layout);
+    let p = use_async::<_, _, ()>({
+        let cache = cache.clone();
 
         async move {
+            let id = "plot-div";
+            let mut plot = Plot::new();
+
+            for (i, (energy, cross_section)) in cache.energy_values.iter().zip(&cache.cross_section_values).enumerate() {
+                if cache.selected[i] {
+                    let trace = Scatter::new(energy.clone(), cross_section.clone())
+                        // .mode(Mode::Markers)
+                        .name(&format!("Scatter Plot {}", i));
+                    plot.add_trace(trace);
+                }
+            }
+
+            let layout = plotly::Layout::new().title("Displaying a Chart in Yew");
+            plot.set_layout(layout);
+
             plotly::bindings::new_plot(id, &plot).await;
             Ok(())
         }
@@ -135,7 +158,11 @@ pub fn home() -> Html {
         })
     };
 
-
+    let cache = XsCache {
+        energy_values: vec![vec![1.0, 2.0], vec![3.0, 4.0]],
+        cross_section_values: vec![vec![5.0, 6.0], vec![7.0, 8.0]],
+        selected: vec![true, true],
+    };
 
     
     html!(
@@ -151,7 +178,7 @@ pub fn home() -> Html {
             <Pagination total={table_data.len()} limit={10} options={pagination_options} on_page={Some(handle_page)}/>
             <h5>{"Sum of selected"} <span class="badge text-bg-secondary">{sum}</span></h5>
             <div id="plot-div"></div>
-            <App />
+            <App cache={cache} />
         </>
     )
 } 
