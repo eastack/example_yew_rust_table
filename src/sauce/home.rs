@@ -19,20 +19,29 @@ pub struct XsCache {
 
 #[derive(Properties, PartialEq)]
 pub struct PlotProps {
-    pub cache: XsCache,
+    pub selected_indexes: HashSet<usize>,
 }
 
 #[function_component(App)]
 pub fn plot_component(props: &PlotProps) -> Html {
-    let cache = &props.cache;
+    let selected_indexes = &props.selected_indexes;
+
+    let cache = generate_cache(&selected_indexes);
+
+    // printing the cache to the console
+    console::log_1(&serde_wasm_bindgen::to_value("cache from within the plot_component function").unwrap());
+    console::log_1(&serde_wasm_bindgen::to_value(&cache).unwrap());
 
     let p = use_async::<_, _, ()>({
         let cache = cache.clone();
 
+        // this appears to run the first time the code is loaded but not repeated on select box click
         async move {
             let id = "plot-div";
             let mut plot = Plot::new();
 
+            console::log_1(&serde_wasm_bindgen::to_value("cache.energy_values").unwrap());
+            console::log_1(&serde_wasm_bindgen::to_value(&cache.energy_values).unwrap());
             for (i, (energy, cross_section)) in cache.energy_values.iter().zip(&cache.cross_section_values).enumerate() {
                 if cache.checkbox_selected[i] {
                     let trace = Scatter::new(energy.clone(), cross_section.clone())
@@ -50,7 +59,7 @@ pub fn plot_component(props: &PlotProps) -> Html {
     });
 
     // Only on first render
-    use_effect_with((), move |_| {
+    use_effect_with(selected_indexes.clone(), move |_| {
         p.run();
     });
 
@@ -66,7 +75,7 @@ fn generate_cache(selected: &HashSet<usize>) -> XsCache {
     let mut cache_energy_values = Vec::new();
     let mut cache_cross_section_values = Vec::new();
     let mut cache_checkbox_selected = Vec::new();
-
+    console::log_1(&serde_wasm_bindgen::to_value("selected_id").unwrap());
     for &selected_id in selected.iter() {
         let (energy, cross_section) = get_values_by_id(selected_id as i32);
         cache_energy_values.push(energy);
@@ -74,15 +83,24 @@ fn generate_cache(selected: &HashSet<usize>) -> XsCache {
         cache_checkbox_selected.push(true);
 
         // Print the selected ID to the console
+        
         console::log_1(&selected_id.clone().into());
     }
+    // printing out the data to terminal and it looks correct
 
+    console::log_1(&serde_wasm_bindgen::to_value("cache_energy_values from inside generate_cache").unwrap());
+    console::log_1(&serde_wasm_bindgen::to_value(&cache_energy_values).unwrap());
+    console::log_1(&serde_wasm_bindgen::to_value("hard coded data that makes plot from inside generate_cache").unwrap());
+    console::log_1(&serde_wasm_bindgen::to_value(& vec![vec![5.0, 5.1, 5.2]]).unwrap());
+
+    // not sure why but this appears to be returning the same sort of data as the below hard coded version but it doesn't plot
     XsCache {
         energy_values: cache_energy_values,
         cross_section_values: cache_cross_section_values,
         checkbox_selected: cache_checkbox_selected,
     }
 
+    // when this is uncommented it gets plotted !
     // XsCache {
     //     energy_values: vec![
     //         vec![5.0, 5.1, 5.2],
@@ -149,9 +167,8 @@ pub fn home() -> Html {
 
     // Sum data
     let selected_indexes = use_set(HashSet::<usize>::new());
-    let selected = selected_indexes.current().clone();
 
-    let sum = selected.len();
+    let sum = selected_indexes.current().len();
 
 
     // Column definition
@@ -183,10 +200,8 @@ pub fn home() -> Html {
         })
     };
 
-    // how to I get this to be updated and run everytime a checkbox it ticked? A bit similar to the callback above
-    let cache = generate_cache(&selected);
-
-    console::log_1(&serde_wasm_bindgen::to_value(&cache).unwrap());
+    
+    
 
     // Fill the table data structure with actual data
     let mut table_data = Vec::new();
@@ -196,7 +211,7 @@ pub fn home() -> Html {
             id: *id,
             name: name.clone(),
             value: *value,
-            checked: selected.contains(&index),
+            checked: selected_indexes.current().contains(&index),
             sum_callback: callback_sum.clone(),
         })
     }
@@ -244,7 +259,7 @@ pub fn home() -> Html {
             <Pagination total={table_data.len()} limit={10} options={pagination_options} on_page={Some(handle_page)}/>
             <h5>{"Number selected"} <span class="badge text-bg-secondary">{sum}</span></h5>
             <div id="plot-div"></div>
-            <App cache={cache} />
+            <App selected_indexes={(*selected_indexes.current()).clone()} />
         </>
     )
 } 
