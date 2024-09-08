@@ -45,12 +45,17 @@ pub fn plot_component(props: &PlotProps) -> Html {
             for (i, (energy, cross_section)) in cache.energy_values.iter().zip(&cache.cross_section_values).enumerate() {
                 if cache.checkbox_selected[i] {
                     let trace = Scatter::new(energy.clone(), cross_section.clone())
-                        .name(&format!("Scatter Plot {}", i));
+                        .name(&format!("Scatter Plot {}", i)
+                    );
                     plot.add_trace(trace);
                 }
             }
 
-            let layout = plotly::Layout::new().title("Displaying a Chart in Yew");
+            let layout = plotly::Layout::new()
+                .title("Cross sections plotted with XSPlot.com")
+                .show_legend(true)
+                .x_axis(plotly::layout::Axis::new().title("Energy"))
+                .y_axis(plotly::layout::Axis::new().title("Cross section"));
             plot.set_layout(layout);
 
             plotly::bindings::new_plot(id, &plot).await;
@@ -86,12 +91,6 @@ fn generate_cache(selected: &HashSet<usize>) -> XsCache {
         
         console::log_1(&selected_id.clone().into());
     }
-    // printing out the data to terminal and it looks correct
-
-    console::log_1(&serde_wasm_bindgen::to_value("cache_energy_values from inside generate_cache").unwrap());
-    console::log_1(&serde_wasm_bindgen::to_value(&cache_energy_values).unwrap());
-    console::log_1(&serde_wasm_bindgen::to_value("hard coded data that makes plot from inside generate_cache").unwrap());
-    console::log_1(&serde_wasm_bindgen::to_value(& vec![vec![5.0, 5.1, 5.2]]).unwrap());
 
     // not sure why but this appears to be returning the same sort of data as the below hard coded version but it doesn't plot
     XsCache {
@@ -100,18 +99,6 @@ fn generate_cache(selected: &HashSet<usize>) -> XsCache {
         checkbox_selected: cache_checkbox_selected,
     }
 
-    // when this is uncommented it gets plotted !
-    // XsCache {
-    //     energy_values: vec![
-    //         vec![5.0, 5.1, 5.2],
-    //         vec![3.0, 4.0]
-    //     ],
-    //     cross_section_values: vec![
-    //         vec![50.0, 50.1, 50.2],
-    //         vec![7.0, 8.0]
-    //     ],
-    //     checkbox_selected: vec![true, true],
-    // }
 }
 
 fn get_values_by_id(id: i32) -> (Vec<f64>, Vec<f64>) {
