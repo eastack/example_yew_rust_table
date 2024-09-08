@@ -61,6 +61,43 @@ pub fn plot_component(props: &PlotProps) -> Html {
     }
 }
 
+fn generate_cache(selected: &HashSet<usize>) -> XsCache {
+    // as nothing is selected initially this returns an empy strut
+    // so I've commented this out and I've made up a strut with data
+
+    // let mut cache_energy_values = Vec::new();
+    // let mut cache_cross_section_values = Vec::new();
+    // let mut cache_checkbox_selected = Vec::new();
+
+    // for &selected_id in selected.iter() {
+    //     let (energy, cross_section) = get_values_by_id(selected_id as i32);
+    //     cache_energy_values.push(energy);
+    //     cache_cross_section_values.push(cross_section);
+    //     cache_checkbox_selected.push(true);
+
+    //     // Print the selected ID to the console
+    //     console::log_1(&selected_id.clone().into());
+    // }
+
+    // XsCache {
+    //     energy_values: cache_energy_values,
+    //     cross_section_values: cache_cross_section_values,
+    //     checkbox_selected: cache_checkbox_selected,
+    // }
+
+    XsCache {
+        energy_values: vec![
+            vec![5.0, 5.1, 5.2],
+            vec![3.0, 4.0]
+        ],
+        cross_section_values: vec![
+            vec![50.0, 50.1, 50.2],
+            vec![7.0, 8.0]
+        ],
+        checkbox_selected: vec![true, true],
+    }
+}
+
 fn get_values_by_id(id: i32) -> (Vec<f64>, Vec<f64>) {
     match id {
         1 => (vec![1.0, 1.1, 1.2], vec![10.0, 10.1, 10.2]),
@@ -120,7 +157,6 @@ pub fn home() -> Html {
     let sum = selected.len();
 
 
-
     // Column definition
     let columns = vec![
         ColumnBuilder::new("select").orderable(true).short_name("Select").data_property("select").header_class("user-select-none").build(),
@@ -150,41 +186,12 @@ pub fn home() -> Html {
         })
     };
 
-    let cache = XsCache {
-        energy_values: vec![
-            vec![5.0, 5.1, 5.2],
-            vec![3.0, 4.0]
-        ],
-        cross_section_values: vec![
-            vec![50.0, 50.1, 50.2],
-            vec![7.0, 8.0]
-        ],
-        checkbox_selected: vec![true, true],
-    };
+    // how to I get this to be updated and run everytime a checkbox it ticked?
+    let cache = generate_cache(&selected);
+
+
     
     console::log_1(&serde_wasm_bindgen::to_value(&cache).unwrap());
-
-
-    // this needs updating with a callback
-    // let mut cache_energy_values = Vec::new();
-    // let mut cache_cross_section_values = Vec::new();
-    // let mut cache_selected = Vec::new();
-
-    // for &selected_id in selected.iter() {
-    //     let (energy, cross_section) = get_values_by_id(selected_id as i32);
-    //     cache_energy_values.push(energy);
-    //     cache_cross_section_values.push(cross_section);
-    //     cache_selected.push(true);
-
-    //     // Print the selected ID to the console
-    //     console::log_1(&selected_id.clone().into());
-    // }
-
-    // let cache = XsCache {
-    //     energy_values:cache_energy_values,
-    //     cross_section_values:cache_cross_section_values,
-    //     selected:cache_selected,
-    // };
 
     // Fill the table data structure with actual data
     let mut table_data = Vec::new();
