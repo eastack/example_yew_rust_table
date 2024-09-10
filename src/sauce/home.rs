@@ -15,7 +15,9 @@ use crate::types::error::Error;
 
 #[derive(Debug, Serialize, Deserialize)]
 struct ReactionData {
+    #[serde(rename(deserialize = "energy"))]
     energy_values: Vec<f64>,
+    #[serde(rename(deserialize = "cross_section"))]
     cross_section_values: Vec<f64>,
 }
 
