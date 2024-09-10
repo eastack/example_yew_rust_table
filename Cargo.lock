@@ -1205,6 +1205,7 @@ dependencies = [
  "serde-value",
  "serde-wasm-bindgen 0.4.5",
  "serde_json",
+ "thiserror",
  "tokio",
  "tracing",
  "tracing-wasm",

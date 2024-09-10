@@ -1,16 +1,17 @@
-use std::collections::HashSet;
-use yew::{Callback, classes, function_component, Html, html, TargetCast, use_reducer, use_state};
-use serde::Serialize;
-use web_sys::{console, HtmlInputElement, InputEvent};
-use yew_hooks::use_set;
-use yew_hooks::use_async;
-use yew_custom_components::pagination::Pagination;
-use yew_custom_components::table::{Options, Table};
-use yew_custom_components::table::types::{ColumnBuilder, TableData};
 use plotly::{Plot, Scatter};
-use yew::prelude::*;
 use serde::Deserialize;
+use serde::Serialize;
+use std::collections::HashSet;
+use web_sys::{console, HtmlInputElement, InputEvent};
+use yew::prelude::*;
+use yew::{classes, function_component, html, use_reducer, use_state, Callback, Html, TargetCast};
+use yew_custom_components::pagination::Pagination;
+use yew_custom_components::table::types::{ColumnBuilder, TableData};
+use yew_custom_components::table::{Options, Table};
+use yew_hooks::use_async;
+use yew_hooks::use_set;
 
+use crate::types::error::Error;
 
 #[derive(Debug, Serialize, Deserialize)]
 struct ReactionData {
@@ -34,27 +35,34 @@ pub struct PlotProps {
 pub fn plot_component(props: &PlotProps) -> Html {
     let selected_indexes = &props.selected_indexes;
 
-    let cache = generate_cache(&selected_indexes);
-
-    // printing the cache to the console
-    console::log_1(&serde_wasm_bindgen::to_value("cache from within the plot_component function").unwrap());
-    console::log_1(&serde_wasm_bindgen::to_value(&cache).unwrap());
-
-    let p = use_async::<_, _, ()>({
-        let cache = cache.clone();
+    let p = use_async::<_, _, Error>({
+        let selected_indexes = &props.selected_indexes;
+        let selected_indexes = selected_indexes.clone();
 
         // this appears to run the first time the code is loaded but not repeated on select box click
         async move {
+            let cache = generate_cache(selected_indexes).await?;
+            // printing the cache to the console
+            console::log_1(
+                &serde_wasm_bindgen::to_value("cache from within the plot_component function")
+                    .unwrap(),
+            );
+            console::log_1(&serde_wasm_bindgen::to_value(&cache).unwrap());
+
             let id = "plot-div";
             let mut plot = Plot::new();
 
             console::log_1(&serde_wasm_bindgen::to_value("cache.energy_values").unwrap());
             console::log_1(&serde_wasm_bindgen::to_value(&cache.energy_values).unwrap());
-            for (i, (energy, cross_section)) in cache.energy_values.iter().zip(&cache.cross_section_values).enumerate() {
+            for (i, (energy, cross_section)) in cache
+                .energy_values
+                .iter()
+                .zip(&cache.cross_section_values)
+                .enumerate()
+            {
                 if cache.checkbox_selected[i] {
                     let trace = Scatter::new(energy.clone(), cross_section.clone())
-                        .name(&format!("Scatter Plot {}", i)
-                    );
+                        .name(&format!("Scatter Plot {}", i));
                     plot.add_trace(trace);
                 }
             }
@@ -74,6 +82,7 @@ pub fn plot_component(props: &PlotProps) -> Html {
     // Only on first render
     use_effect_with(selected_indexes.clone(), move |_| {
         p.run();
+        p.run();
     });
 
     html! {
@@ -81,7 +90,7 @@ pub fn plot_component(props: &PlotProps) -> Html {
     }
 }
 
-fn generate_cache(selected: &HashSet<usize>) -> XsCache {
+async fn generate_cache(selected: HashSet<usize>) -> Result<XsCache, Error> {
     // as nothing is selected initially this returns an empy strut
     // I need this calling and updating the cache on every checkbox interaction
 
@@ -90,35 +99,36 @@ fn generate_cache(selected: &HashSet<usize>) -> XsCache {
     let mut cache_checkbox_selected = Vec::new();
     console::log_1(&serde_wasm_bindgen::to_value("selected_id").unwrap());
     for &selected_id in selected.iter() {
-        let (energy, cross_section) = get_values_by_id(selected_id as i32);
+        let (energy, cross_section) = get_values_by_id(selected_id as i32).await?;
         cache_energy_values.push(energy);
         cache_cross_section_values.push(cross_section);
         cache_checkbox_selected.push(true);
 
         // Print the selected ID to the console
-        
+
         console::log_1(&selected_id.clone().into());
     }
 
     // not sure why but this appears to be returning the same sort of data as the below hard coded version but it doesn't plot
-    XsCache {
+    Ok(XsCache {
         energy_values: cache_energy_values,
         cross_section_values: cache_cross_section_values,
         checkbox_selected: cache_checkbox_selected,
-    }
-
+    })
 }
 
-
-
-#[tokio::main]
-async fn get_values_by_id(id: i32) -> Result<(Vec<f64>, Vec<f64>), reqwest::Error> {
+async fn get_values_by_id(id: i32) -> Result<(Vec<f64>, Vec<f64>), Error> {
     let url = format!("https://raw.githubusercontent.com/shimwell/example_yew_rust_table/adding_json_reading/data_{}.json", id);
-    let downloaded_reaction_Data: ReactionData = reqwest::get(url)
-        .await?
+    let downloaded_reaction_data: ReactionData = reqwest::get(url)
+        .await
+        .map_err(|e| Error::RequestError(e.to_string()))?
         .json()
-        .await?;
-    Ok((downloaded_reaction_Data.energy_values, downloaded_reaction_Data.cross_section_values))
+        .await
+        .map_err(|e| Error::RequestError(e.to_string()))?;
+    Ok((
+        downloaded_reaction_data.energy_values,
+        downloaded_reaction_data.cross_section_values,
+    ))
 }
 
 #[function_component(Home)]
@@ -131,23 +141,41 @@ pub fn home() -> Html {
     let search_term = use_state(|| None::<String>);
     let search = (*search_term).as_ref().cloned();
 
-    let page=use_state(||0usize);
-    let current_page=(*page).clone();
+    let page = use_state(|| 0usize);
+    let current_page = (*page).clone();
 
     // Sum data
     let selected_indexes = use_set(HashSet::<usize>::new());
 
     let sum = selected_indexes.current().len();
 
-
     // Column definition
     let columns = vec![
-        ColumnBuilder::new("select").orderable(true).short_name("Select").data_property("select").header_class("user-select-none").build(),
-        ColumnBuilder::new("id").orderable(true).short_name("ID").data_property("id").header_class("user-select-none").build(),
-        ColumnBuilder::new("name").orderable(true).short_name("Name").data_property("name").header_class("user-select-none").build(),
-        ColumnBuilder::new("value").orderable(true).short_name("Value").data_property("value").header_class("user-select-none").build(),
+        ColumnBuilder::new("select")
+            .orderable(true)
+            .short_name("Select")
+            .data_property("select")
+            .header_class("user-select-none")
+            .build(),
+        ColumnBuilder::new("id")
+            .orderable(true)
+            .short_name("ID")
+            .data_property("id")
+            .header_class("user-select-none")
+            .build(),
+        ColumnBuilder::new("name")
+            .orderable(true)
+            .short_name("Name")
+            .data_property("name")
+            .header_class("user-select-none")
+            .build(),
+        ColumnBuilder::new("value")
+            .orderable(true)
+            .short_name("Value")
+            .data_property("value")
+            .header_class("user-select-none")
+            .build(),
     ];
-
 
     // Table options
     let options = Options {
@@ -157,8 +185,6 @@ pub fn home() -> Html {
         orderable_classes: vec!["mx-1".to_string(), "fa-solid".to_string()],
     };
 
-
-    
     // Handle sum
     let callback_sum = {
         let selected_indexes = selected_indexes.clone();
@@ -168,9 +194,6 @@ pub fn home() -> Html {
             }
         })
     };
-
-    
-    
 
     // Fill the table data structure with actual data
     let mut table_data = Vec::new();
@@ -199,11 +222,11 @@ pub fn home() -> Html {
 
     let pagination_options = yew_custom_components::pagination::Options::default()
         .show_prev_next(true)
-        .list_classes(vec!(String::from("pagination")))
-        .item_classes(vec!(String::from("page-item")))
-        .link_classes(vec!(String::from("page-link")))
-        .active_item_classes(vec!(String::from("active")))
-        .disabled_item_classes(vec!(String::from("disabled")));
+        .list_classes(vec![String::from("pagination")])
+        .item_classes(vec![String::from("page-item")])
+        .link_classes(vec![String::from("page-link")])
+        .active_item_classes(vec![String::from("active")])
+        .disabled_item_classes(vec![String::from("disabled")]);
 
     // Handle changing page
     let handle_page = {
@@ -213,8 +236,6 @@ pub fn home() -> Html {
         })
     };
 
-
-    
     html!(
         <>
             <h1>{"Minimal table Example"}</h1>
@@ -231,10 +252,7 @@ pub fn home() -> Html {
             <App selected_indexes={(*selected_indexes.current()).clone()} />
         </>
     )
-} 
-
-
-
+}
 
 #[derive(Clone, Serialize, Debug, Default)]
 struct TableLine {
@@ -260,15 +278,17 @@ impl PartialOrd for TableLine {
 }
 
 impl TableData for TableLine {
-    fn get_field_as_html(&self, field_name: &str) -> yew_custom_components::table::error::Result<Html> {
+    fn get_field_as_html(
+        &self,
+        field_name: &str,
+    ) -> yew_custom_components::table::error::Result<Html> {
         match field_name {
             "select" => Ok(html!( <input type="checkbox" checked={self.checked}
                 onclick={
                 let value = self.original_index;
                 let handle_sum = self.sum_callback.clone();
                 move |_| { handle_sum.emit(value); }
-                } /> )
-            ),
+                } /> )),
             "id" => Ok(html! { self.id }),
             "name" => Ok(html! { self.name.clone() }),
             "value" => Ok(html! { self.value }),
@@ -276,7 +296,10 @@ impl TableData for TableLine {
         }
     }
 
-    fn get_field_as_value(&self, field_name: &str) -> yew_custom_components::table::error::Result<serde_value::Value> {
+    fn get_field_as_value(
+        &self,
+        field_name: &str,
+    ) -> yew_custom_components::table::error::Result<serde_value::Value> {
         match field_name {
             "id" => Ok(serde_value::Value::I32(self.id)),
             "name" => Ok(serde_value::Value::String(self.name.clone())),
